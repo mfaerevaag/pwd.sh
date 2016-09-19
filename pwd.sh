@@ -8,6 +8,7 @@ set -o pipefail
 
 filter="$(command -v grep) -v -E"
 gpg="$(command -v gpg || command -v gpg2)"
+clip="$(command -v xclip) -selection c"
 safe="${PWDSH_SAFE:=${HOME}/.keys/pwd.sh.safe}"
 
 pub_key="markus@faerevaag.no"
@@ -96,7 +97,7 @@ clip_pass () {
 
     entry=$(read_pass "$@")
 
-    echo $entry | cut -f 1 -d ' ' | xclip -selection c
+    echo $entry | cut -f 1 -d ' ' | ${clip}
 }
 
 
@@ -176,6 +177,7 @@ create_username () {
       echo "
   Password: ${userpass}"
     fi
+    echo $userpass | ${clip}
   fi
 }
 
