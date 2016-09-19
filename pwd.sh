@@ -91,6 +91,15 @@ read_pass () {
 }
 
 
+clip_pass () {
+  # Read a password from safe.
+
+    entry=$(read_pass "$@")
+
+    echo $entry | cut -f 1 -d ' ' | xclip -selection c
+}
+
+
 gen_pass () {
   # Generate a password.
 
@@ -110,7 +119,7 @@ gen_pass () {
 
   # base64: 4 characters for every 3 bytes
   ${gpg} --gen-random --armor 0 "$((${max} * 3/4))" | cut -c -${len}
- }
+}
 
 
 write_pass () {
@@ -202,6 +211,9 @@ elif [[ "${action}" =~ ^([dD])$ ]] ; then
     username="${2}"
   fi
   write_pass
+
+elif [[ "${action}" =~ ^([cC])$ ]] ; then
+  clip_pass "$@"
 
 else
   read_pass "$@"
