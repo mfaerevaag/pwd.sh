@@ -8,7 +8,9 @@ set -o pipefail
 
 filter="$(command -v grep) -v -E"
 gpg="$(command -v gpg || command -v gpg2)"
-safe="${PWDSH_SAFE:=pwd.sh.safe}"
+safe="${PWDSH_SAFE:=${HOME}/.keys/pwd.sh.safe}"
+
+pub_key="markus@faerevaag.no"
 
 
 fail () {
@@ -50,19 +52,18 @@ get_pass () {
 decrypt () {
   # Decrypt with a password.
 
-  echo "${1}" | ${gpg} \
-    --decrypt --armor --batch \
-    --passphrase-fd 0 "${2}" 2>/dev/null
+  ${gpg} \
+    --decrypt --armor \
+    "${1}" 2>/dev/null
 }
 
 
 encrypt () {
   # Encrypt with a password.
 
-  ${gpg} \
-    --symmetric --armor --batch --yes \
-    --passphrase-fd 3 \
-    --output "${2}" "${3}" 3< <(echo "${1}")
+  ${gpg} --encrypt --armor --yes \
+    --recipient "${pub_key}" \
+    --output "${1}"
 }
 
 
@@ -84,10 +85,9 @@ read_pass () {
     username=""
   fi
 
-  get_pass "
-  Enter password to unlock ${safe}: "
-  printf "\n\n"
-  decrypt ${password} ${safe} | grep " ${username}" || fail "Decryption failed"
+  echo ""
+
+  decrypt ${safe} | grep " ${username}" || fail "Decryption failed"
 }
 
 
@@ -123,22 +123,20 @@ write_pass () {
     entry="${userpass} ${username}"
   fi
 
-  get_pass "
-  Enter password to unlock ${safe}: " ; echo
-
   # If safe exists, decrypt it and filter out username, or bail on error.
   # If successful, append entry, or blank line.
   # Filter blank lines and previous timestamp, append fresh timestamp.
   # Finally, encrypt it all to a new safe file, or fail.
   # If successful, update to new safe file.
   ( if [[ -f "${safe}" ]] ; then
-      decrypt ${password} ${safe} | \
+      decrypt ${safe} | \
       ${filter} " ${username}$" || return
     fi ; \
     echo "${entry}") | \
     (${filter} "^[[:space:]]*$|^mtime:[[:digit:]]+$";echo mtime:$(date +%s)) | \
-    encrypt ${password} ${safe}.new - || fail "Write to safe failed"
+    encrypt ${safe}.new || fail "Write to safe failed"
     mv ${safe}.new ${safe}
+    chmod 0600 ${safe}
 }
 
 
